@@ -1,14 +1,10 @@
-// database.js
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 const DB_PATH = path.join(__dirname, 'todos.db');
 const db = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) {
-    console.error('❌ Database error:', err.message);
-  } else {
-    console.log('✅ Database connected:', DB_PATH);
-  }
+  if (err) console.error('❌ DB error:', err.message);
+  else console.log('✅ Database connected');
 });
 
 db.serialize(() => {
@@ -46,6 +42,29 @@ db.serialize(() => {
     status     TEXT    DEFAULT 'pending',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
+  )`);
+
+  // ── RECURRING TASK TEMPLATES ───────────────
+  db.run(`CREATE TABLE IF NOT EXISTS recurring_tasks (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL,
+    title      TEXT    NOT NULL,
+    category   TEXT    DEFAULT 'personal',
+    priority   TEXT    DEFAULT 'medium',
+    times      TEXT    DEFAULT '[]',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`);
+
+  // ── RECURRING DAILY LOG ────────────────────
+  db.run(`CREATE TABLE IF NOT EXISTS recurring_log (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    recurring_id INTEGER NOT NULL,
+    user_id      INTEGER NOT NULL,
+    log_date     TEXT    NOT NULL,
+    slot         TEXT    DEFAULT 'done',
+    done_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(recurring_id) REFERENCES recurring_tasks(id) ON DELETE CASCADE
   )`);
 
 });
