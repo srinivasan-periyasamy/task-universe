@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎯 Task Universe</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    color: white;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background:
+      radial-gradient(circle, rgba(255,107,107,0.05) 0%, transparent 60%),
+      radial-gradient(circle at 80% 20%, rgba(78,205,196,0.05) 0%, transparent 40%);
+    animation: bgMove 10s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 0;
+  }
+  @keyframes bgMove {
+    0%   { transform: translate(0,0); }
+    100% { transform: translate(30px,20px); }
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo { font-size: 1.8em; font-weight: 800; }
+  .logo span {
+    background: linear-gradient(90deg,#FF6B6B,#FFE66D,#4ECDC4,#45B7D1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .clock {
+    font-size: 1.4em;
+    font-weight: 700;
+    background: linear-gradient(90deg,#FFE66D,#FF6B6B);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+
+  /* ── LOGIN BOX ── */
+  .login-box {
+    max-width: 420px;
+    margin: 80px auto;
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 40px;
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    position: relative;
+    z-index: 1;
+  }
+  .login-box h2 {
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 1.8em;
+  }
+
+  /* ── INPUTS ── */
+  input, select, textarea {
+    width: 100%;
+    padding: 12px 16px;
+    margin: 8px 0;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 10px;
+    color: white;
+    font-size: 1em;
+    outline: none;
+    transition: all 0.3s;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: #4ECDC4;
+    background: rgba(78,205,196,0.1);
+    box-shadow: 0 0 15px rgba(78,205,196,0.2);
+  }
+  input::placeholder { color: rgba(255,255,255,0.4); }
+  select option { background: #1a1a2e; color: white; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 700;
+    transition: all 0.3s;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+  .btn:active { transform: translateY(0); }
+  .btn-primary { background: linear-gradient(135deg,#FF6B6B,#FF8E53); color:white; width:100%; margin-top:10px; }
+  .btn-success { background: linear-gradient(135deg,#4ECDC4,#44A08D); color:white; }
+  .btn-danger  { background: linear-gradient(135deg,#FF6B6B,#c0392b); color:white; }
+  .btn-warning { background: linear-gradient(135deg,#FFE66D,#f39c12); color:#333; }
+  .btn-info    { background: linear-gradient(135deg,#45B7D1,#2980b9); color:white; }
+  .btn-sm      { padding: 7px 14px; font-size: 0.85em; }
+
+  /* ── DASHBOARD ── */
+  .dashboard { padding: 25px 30px; position: relative; z-index: 1; }
+
+  /* ── STATS ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px,1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+  }
+  .stat-card {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: transform 0.3s;
+    cursor: default;
+  }
+  .stat-card:hover { transform: translateY(-5px); }
+  .stat-num   { font-size: 2.8em; font-weight: 800; line-height: 1; }
+  .stat-label { font-size: 0.82em; opacity: 0.7; margin-top: 6px; }
+  .stat-total    .stat-num { color: #45B7D1; }
+  .stat-pending  .stat-num { color: #FFE66D; }
+  .stat-progress .stat-num { color: #FF8E53; }
+  .stat-done     .stat-num { color: #4ECDC4; }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 10px 22px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9em;
+    border: 2px solid transparent;
+    transition: all 0.3s;
+    user-select: none;
+  }
+  .tab:hover { transform: scale(1.05); }
+  .tab-all       { background: rgba(255,255,255,0.1);  border-color: rgba(255,255,255,0.3); }
+  .tab-personal  { background: rgba(255,107,107,0.15); border-color: #FF6B6B; }
+  .tab-office    { background: rgba(69,183,209,0.15);  border-color: #45B7D1; }
+  .tab-education { background: rgba(78,205,196,0.15);  border-color: #4ECDC4; }
+  .tab.active    { box-shadow: 0 0 20px rgba(255,255,255,0.25); transform: scale(1.07); }
+
+  /* ── TASK GRID ── */
+  .tasks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px,1fr));
+    gap: 20px;
+  }
+
+  /* ── TASK CARD ── */
+  .task-card {
+    background: rgba(255,255,255,0.07);
+    backdrop-filter: blur(15px);
+    border-radius: 18px;
+    padding: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: all 0.3s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .task-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 5px; height: 100%;
+    border-radius: 18px 0 0 18px;
+  }
+  .task-card.personal::before  { background: linear-gradient(180deg,#FF6B6B,#FF8E53); }
+  .task-card.office::before    { background: linear-gradient(180deg,#45B7D1,#2980b9); }
+  .task-card.education::before { background: linear-gradient(180deg,#4ECDC4,#44A08D); }
+  .task-card:hover { transform: translateY(-6px); box-shadow: 0 20px 50px rgba(0,0,0,0.35); }
+  .task-card.completed { opacity: 0.55; }
+  .task-card.completed .task-title { text-decoration: line-through; }
+
+  .task-title { font-size: 1.05em; font-weight: 700; margin-bottom: 10px; padding-left: 8px; }
+  .task-meta  { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 10px; }
+
+  /* ── BADGES ── */
+  .badge {
+    padding: 3px 11px;
+    border-radius: 20px;
+    font-size: 0.73em;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .badge-personal  { background: rgba(255,107,107,0.25); color: #FF8E8E; }
+  .badge-office    { background: rgba(69,183,209,0.25);  color: #6DD5ED; }
+  .badge-education { background: rgba(78,205,196,0.25);  color: #4ECDC4; }
+  .badge-high      { background: rgba(255,107,107,0.25); color: #FF6B6B; }
+  .badge-medium    { background: rgba(255,230,109,0.25); color: #FFE66D; }
+  .badge-low       { background: rgba(78,205,196,0.25);  color: #4ECDC4; }
+  .badge-pending     { background: rgba(255,230,109,0.2); color: #FFE66D; }
+  .badge-in_progress { background: rgba(255,142,83,0.2);  color: #FF8E53; }
+  .badge-completed   { background: rgba(78,205,196,0.2);  color: #4ECDC4; }
+
+  /* ── PROGRESS BAR ── */
+  .progress-wrap { background: rgba(255,255,255,0.1); border-radius:10px; height:6px; margin:10px 0; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:10px; background:linear-gradient(90deg,#4ECDC4,#45B7D1); transition:width 0.5s ease; }
+
+  /* ── ALARM BADGE ── */
+  .alarm-info { display:flex; align-items:center; gap:5px; font-size:0.8em; color:#FFE66D; margin-top:8px; }
+
+  /* ── USER BADGE ── */
+  .user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.75em;
+    font-weight: 700;
+    margin-top: 8px;
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 70px 20px;
+    opacity: 0.5;
+    font-size: 1.1em;
+  }
+  .empty-state div { font-size: 3em; margin-bottom: 15px; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(6px);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: linear-gradient(135deg,#1a1a2e,#16213e);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 22px;
+    padding: 30px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+  }
+  .modal h3 { margin-bottom: 20px; font-size: 1.4em; }
+  .modal-btns { display:flex; gap:10px; margin-top:18px; flex-wrap:wrap; }
+  .modal-btns .btn { flex:1; }
+
+  /* ── SUBTASK ── */
+  .subtask-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 13px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 9px;
+    margin: 5px 0;
+    transition: background 0.2s;
+  }
+  .subtask-item:hover { background: rgba(255,255,255,0.09); }
+  .subtask-item input[type="checkbox"] {
+    width: 17px; height: 17px;
+    cursor: pointer;
+    accent-color: #4ECDC4;
+    margin: 0;
+  }
+  .subtask-item span { flex: 1; font-size: 0.92em; }
+  .subtask-done { text-decoration: line-through; opacity: 0.45; }
+  .subtask-add-row { display:flex; gap:10px; margin-top:10px; }
+  .subtask-add-row input { margin: 0; }
+
+  /* ── ALARM POPUP ── */
+  .alarm-popup {
+    position: fixed;
+    top: 20px; right: 20px;
+    background: linear-gradient(135deg,#FF6B6B,#FF8E53);
+    border-radius: 16px;
+    padding: 20px 25px;
+    z-index: 9999;
+    box-shadow: 0 10px 40px rgba(255,107,107,0.6);
+    animation: alarmPulse 0.6s ease-in-out infinite alternate;
+    max-width: 300px;
+    display: none;
+  }
+  @keyframes alarmPulse {
+    0%   { transform: scale(1);    box-shadow: 0 10px 40px rgba(255,107,107,0.5); }
+    100% { transform: scale(1.04); box-shadow: 0 15px 55px rgba(255,107,107,0.9); }
+  }
+  .alarm-popup h4 { font-size: 1.2em; margin-bottom: 6px; }
+
+  /* ── FAB ── */
+  .fab {
+    position: fixed;
+    bottom: 30px; right: 30px;
+    width: 62px; height: 62px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#FF6B6B,#FF8E53);
+    border: none;
+    color: white;
+    font-size: 2em;
+    cursor: pointer;
+    box-shadow: 0 8px 28px rgba(255,107,107,0.55);
+    transition: all 0.3s;
+    z-index: 500;
+    display: none;
+    line-height: 62px;
+    text-align: center;
+  }
+  .fab:hover { transform: scale(1.12) rotate(45deg); }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size: 0.8em;
+    opacity: 0.6;
+    margin: 12px 0 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ── LINK ── */
+  a { color: #4ECDC4; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .dashboard { padding: 15px; }
+    .tasks-grid { grid-template-columns: 1fr; }
+    .header { padding: 12px 15px; }
+    .logo { font-size: 1.3em; }
+    .clock { font-size: 1em; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ ALARM POPUP ══════════════════════════ -->
+<div class="alarm-popup" id="alarmPopup">
+  <h4>⏰ Task Alarm!</h4>
+  <div id="alarmText" style="font-weight:600; margin-bottom:12px;"></div>
+  <button class="btn btn-warning btn-sm" style="width:100%;" onclick="dismissAlarm()">✅ Dismiss</button>
+</div>
+
+<!-- ══ HEADER ═══════════════════════════════ -->
+<div class="header">
+  <div class="logo">🎯 <span>Task Universe</span></div>
+  <div class="clock" id="clock">00:00:00</div>
+  <div class="header-right" id="headerRight">
+    <!-- login/user info injected here -->
+  </div>
+</div>
+
+<!-- ══ LOGIN PAGE ════════════════════════════ -->
+<div id="loginPage">
+  <div class="login-box">
+    <h2>👋 Welcome Back!</h2>
+    <input type="text"     id="loginUser" placeholder="👤 Username">
+    <input type="password" id="loginPass" placeholder="🔒 Password"
+           onkeydown="if(event.key==='Enter') login()">
+    <button class="btn btn-primary" onclick="login()">🚀 Login</button>
+    <p style="text-align:center; margin-top:18px; opacity:0.65; font-size:0.9em;">
+      No account? <a href="#" onclick="showPage('registerPage')">Register here ✨</a>
+    </p>
+    <div id="loginError" style="color:#FF6B6B; text-align:center; margin-top:10px; font-size:0.9em;"></div>
+  </div>
+</div>
+
+<!-- ══ REGISTER PAGE ═════════════════════════ -->
+<div id="registerPage" style="display:none;">
+  <div class="login-box">
+    <h2>✨ Create Account</h2>
+    <input type="text"     id="regUser"  placeholder="👤 Username">
+    <input type="password" id="regPass"  placeholder="🔒 Password">
+    <div class="section-label">🎨 Pick your color theme</div>
+    <input type="color" id="regColor" value="#FF6B6B"
+           style="height:48px; cursor:pointer; padding:4px;">
+    <button class="btn btn-primary" onclick="register()">🎉 Create Account</button>
+    <p style="text-align:center; margin-top:18px; opacity:0.65; font-size:0.9em;">
+      Have account? <a href="#" onclick="showPage('loginPage')">Login here 🔑</a>
+    </p>
+    <div id="regError" style="color:#FF6B6B; text-align:center; margin-top:10px; font-size:0.9em;"></div>
+    <div id="regSuccess" style="color:#4ECDC4; text-align:center; margin-top:10px; font-size:0.9em;"></div>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD ══════════════════════════════ -->
+<div id="dashboardPage" style="display:none;">
+  <div class="dashboard">
+
+    <!-- STATS -->
+    <div class="stats-grid">
+      <div class="stat-card stat-total">
+        <div class="stat-num" id="statTotal">0</div>
+        <div class="stat-label">📋 Total Tasks</div>
+      </div>
+      <div class="stat-card stat-pending">
+        <div class="stat-num" id="statPending">0</div>
+        <div class="stat-label">⏳ Pending</div>
+      </div>
+      <div class="stat-card stat-progress">
+        <div class="stat-num" id="statProgress">0</div>
+        <div class="stat-label">🔥 In Progress</div>
+      </div>
+      <div class="stat-card stat-done">
+        <div class="stat-num" id="statDone">0</div>
+        <div class="stat-label">✅ Completed</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <div class="tab tab-all active"       onclick="filterTasks('all',this)">🌍 All</div>
+      <div class="tab tab-personal"         onclick="filterTasks('personal',this)">👤 Personal</div>
+      <div class="tab tab-office"           onclick="filterTasks('office',this)">💼 Office</div>
+      <div class="tab tab-education"        onclick="filterTasks('education',this)">📚 Education</div>
+    </div>
+
+    <!-- TASKS -->
+    <div class="tasks-grid" id="tasksGrid">
+      <div class="empty-state"><div>✨</div>Loading tasks...</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ FAB BUTTON ════════════════════════════ -->
+<button class="fab" id="fabBtn" onclick="openModal('addModal')">+</button>
+
+<!-- ══ ADD TASK MODAL ════════════════════════ -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <h3>✨ Add New Task</h3>
+    <input type="text" id="newTitle" placeholder="📝 Task title (required)">
+    <textarea id="newDesc" placeholder="📄 Description (optional)" rows="3"
+              style="resize:vertical;"></textarea>
+    <div class="section-label">Category</div>
+    <select id="newCategory">
+      <option value="personal">👤 Personal</option>
+      <option value="office">💼 Office Work</option>
+      <option value="education">📚 Education</option>
+    </select>
+    <div class="section-label">Priority</div>
+    <select id="newPriority">
+      <option value="high">🔴 High Priority</option>
+      <option value="medium" selected>🟡 Medium Priority</option>
+      <option value="low">🟢 Low Priority</option>
+    </select>
+    <div class="section-label">⏰ Alarm (optional)</div>
+    <input type="date" id="newAlarmDate">
+    <input type="time" id="newAlarmTime">
+    <div class="modal-btns">
+      <button class="btn btn-success" onclick="addTask()">✅ Add Task</button>
+      <button class="btn btn-danger"  onclick="closeModal('addModal')">❌ Cancel</button>
+    </div>
+    <div id="addError" style="color:#FF6B6B; margin-top:10px; font-size:0.9em;"></div>
+  </div>
+</div>
+
+<!-- ══ DETAIL MODAL ══════════════════════════ -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <h3 id="detailTitle">Task</h3>
+    <div id="detailMeta"></div>
+    <div id="detailDesc" style="opacity:0.75; font-size:0.92em; margin:10px 0;"></div>
+    <div id="detailAlarm"></div>
+
+    <!-- SUBTASKS -->
+    <div style="margin-top:18px;">
+      <div style="font-weight:700; margin-bottom:8px;">📋 Sub-Tasks</div>
+      <div id="subtaskProgress"></div>
+      <div id="subtaskList"></div>
+      <div class="subtask-add-row">
+        <input type="text" id="newSubtask" placeholder="Add sub-task..."
+               onkeydown="if(event.key==='Enter') addSubtask()">
+        <button class="btn btn-info btn-sm" onclick="addSubtask()">Add</button>
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="modal-btns" style="margin-top:20px;">
+      <button class="btn btn-warning" onclick="updateStatus('in_progress')">🔥 In Progress</button>
+      <button class="btn btn-success" onclick="updateStatus('completed')">✅ Complete</button>
+      <button class="btn btn-danger"  onclick="deleteTask()">🗑️ Delete</button>
+    </div>
+    <button class="btn" onclick="closeModal('detailModal')"
+            style="width:100%; margin-top:10px; background:rgba(255,255,255,0.1);">
+      Close
+    </button>
+  </div>
+</div>
+
+<!-- ══ JAVASCRIPT ════════════════════════════ -->
+<script>
+// ── STATE ────────────────────────────────────
+let token       = localStorage.getItem('tu_token');
+let currentUser = localStorage.getItem('tu_user');
+let userColor   = localStorage.getItem('tu_color') || '#FF6B6B';
+let allTasks    = [];
+let currentFilter  = 'all';
+let activeTaskId   = null;
+let alarmFired     = {};
+
+// ── CLOCK + ALARM CHECK ──────────────────────
+function tickClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toTimeString().slice(0,8);
+  checkAlarms(now);
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+function checkAlarms(now) {
+  const dateStr = now.toISOString().slice(0,10);
+  const timeStr = now.toTimeString().slice(0,5);
+  allTasks.forEach(t => {
+    const key = `${t.id}-${t.alarm_date}-${t.alarm_time}`;
+    if (
+      t.alarm_date === dateStr &&
+      t.alarm_time === timeStr &&
+      t.status !== 'completed' &&
+      !alarmFired[key]
+    ) {
+      alarmFired[key] = true;
+      fireAlarm(t.title);
+    }
+  });
+}
+
+function fireAlarm(title) {
+  document.getElementById('alarmText').textContent = title;
+  document.getElementById('alarmPopup').style.display = 'block';
+  if (Notification.permission === 'granted') {
+    new Notification('⏰ Task Alarm — Task Universe', { body: title });
+  }
+}
+function dismissAlarm() {
+  document.getElementById('alarmPopup').style.display = 'none';
+}
+
+// Request notification permission early
+if ('Notification' in window && Notification.permission === 'default') {
+  Notification.requestPermission();
+}
+
+// ── PAGE SWITCHING ───────────────────────────
+function showPage(id) {
+  ['loginPage','registerPage','dashboardPage'].forEach(p => {
+    document.getElementById(p).style.display = 'none';
+  });
+  document.getElementById(id).style.display = 'block';
+}
+
+// ── REGISTER ────────────────────────────────
+async function register() {
+  const username = document.getElementById('regUser').value.trim();
+  const password = document.getElementById('regPass').value;
+  const color    = document.getElementById('regColor').value;
+  document.getElementById('regError').textContent   = '';
+  document.getElementById('regSuccess').textContent = '';
+
+  if (!username || !password) {
+    document.getElementById('regError').textContent = 'Please fill all fields!';
+    return;
+  }
+  const res  = await fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password, color })
+  });
+  const data = await res.json();
+  if (res.ok) {
+    document.getElementById('regSuccess').textContent = '✅ Account created! Redirecting...';
+    setTimeout(() => showPage('loginPage'), 1500);
+  } else {
+    document.getElementById('regError').textContent = '❌ ' + data.error;
+  }
+}
+
+// ── LOGIN ────────────────────────────────────
+async function login() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  document.getElementById('loginError').textContent = '';
+
+  if (!username || !password) {
+    document.getElementById('loginError').textContent = 'Please fill all fields!';
+    return;
+  }
+  const res  = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+  const data = await res.json();
+  if (res.ok) {
+    token       = data.token;
+    currentUser = data.username;
+    userColor   = data.color;
+    localStorage.setItem('tu_token', token);
+    localStorage.setItem('tu_user',  currentUser);
+    localStorage.setItem('tu_color', userColor);
+    initDashboard();
+  } else {
+    document.getElementById('loginError').textContent = '❌ ' + data.error;
+  }
+}
+
+// ── LOGOUT ───────────────────────────────────
+function logout() {
+  localStorage.clear();
+  token = null;
+  allTasks = [];
+  document.getElementById('headerRight').innerHTML = '';
+  document.getElementById('fabBtn').style.display  = 'none';
+  showPage('loginPage');
+}
+
+// ── INIT DASHBOARD ───────────────────────────
+function initDashboard() {
+  showPage('dashboardPage');
+  document.getElementById('fabBtn').style.display = 'block';
+  document.getElementById('headerRight').innerHTML = `
+    <span style="font-weight:600; font-size:0.95em;">
+      <span style="display:inline-block; width:10px; height:10px;
+             border-radius:50%; background:${userColor}; margin-right:6px;"></span>
+      ${currentUser}
+    </span>
+    <button class="btn btn-danger btn-sm" onclick="logout()">Logout</button>
+  `;
+  loadTasks();
+  setInterval(loadTasks, 30000); // auto-refresh every 30s
+}
+
+// ── LOAD TASKS ───────────────────────────────
+async function loadTasks() {
+  try {
+    const res = await fetch('/api/tasks', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (res.status === 401) { logout(); return; }
+    allTasks = await res.json();
+    updateStats();
+    renderTasks(currentFilter);
+  } catch(e) {
+    console.error('Load tasks error:', e);
+  }
+}
+
+// ── STATS ────────────────────────────────────
+function updateStats() {
+  document.getElementById('statTotal').textContent    = allTasks.length;
+  document.getElementById('statPending').textContent  = allTasks.filter(t=>t.status==='pending').length;
+  document.getElementById('statProgress').textContent = allTasks.filter(t=>t.status==='in_progress').length;
+  document.getElementById('statDone').textContent     = allTasks.filter(t=>t.status==='completed').length;
+}
+
+// ── FILTER + RENDER ──────────────────────────
+function filterTasks(cat, el) {
+  currentFilter = cat;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderTasks(cat);
+}
+
+function renderTasks(filter) {
+  const grid  = document.getElementById('tasksGrid');
+  const tasks = filter === 'all' ? allTasks : allTasks.filter(t => t.category === filter);
+
+  if (!tasks.length) {
+    grid.innerHTML = `<div class="empty-state">
+      <div>${filter==='all'?'🚀':filter==='personal'?'👤':filter==='office'?'💼':'📚'}</div>
+      No ${filter === 'all' ? '' : filter} tasks yet!<br>
+      <small style="opacity:0.6;">Click + to add one</small>
+    </div>`;
+    return;
+  }
+
+  const catIcon = { personal:'👤', office:'💼', education:'📚' };
+  const priIcon = { high:'🔴', medium:'🟡', low:'🟢' };
+
+  grid.innerHTML = tasks.map(t => `
+    <div class="task-card ${t.category} ${t.status==='completed'?'completed':''}"
+         onclick="openDetail(${t.id})">
+      <div class="task-title">${catIcon[t.category]||'📋'} ${escHtml(t.title)}</div>
+      <div class="task-meta">
+        <span class="badge badge-${t.category}">${t.category}</span>
+        <span class="badge badge-${t.priority}">${priIcon[t.priority]||''} ${t.priority}</span>
+        <span class="badge badge-${t.status}">${t.status.replace('_',' ')}</span>
+      </div>
+      ${t.description ? `<div style="font-size:0.83em;opacity:0.65;margin-bottom:8px;padding-left:2px;">${escHtml(t.description)}</div>` : ''}
+      ${t.alarm_date && t.alarm_time
+        ? `<div class="alarm-info">⏰ ${t.alarm_date} &nbsp;${t.alarm_time}</div>` : ''}
+      <div class="user-badge" style="background:${t.owner_color}22; color:${t.owner_color};">
+        👤 ${escHtml(t.owner)}
+      </div>
+    </div>
+  `).join('');
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── ADD TASK ─────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+async function addTask() {
+  const title = document.getElementById('newTitle').value.trim();
+  document.getElementById('addError').textContent = '';
+  if (!title) {
+    document.getElementById('addError').textContent = '⚠️ Title is required!';
+    return;
+  }
+  const body = {
+    title,
+    description: document.getElementById('newDesc').value.trim(),
+    category:    document.getElementById('newCategory').value,
+    priority:    document.getElementById('newPriority').value,
+    alarm_date:  document.getElementById('newAlarmDate').value || null,
+    alarm_time:  document.getElementById('newAlarmTime').value || null,
+  };
+  const res = await fetch('/api/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
+    body: JSON.stringify(body)
+  });
+  if (res.ok) {
+    // clear form
+    ['newTitle','newDesc','newAlarmDate','newAlarmTime'].forEach(id => document.getElementById(id).value='');
+    closeModal('addModal');
+    loadTasks();
+  } else {
+    const d = await res.json();
+    document.getElementById('addError').textContent = '❌ ' + d.error;
+  }
+}
+
+// ── TASK DETAIL ──────────────────────────────
+async function openDetail(id) {
+  activeTaskId = id;
+  const t = allTasks.find(x => x.id === id);
+  if (!t) return;
+
+  const catIcon = { personal:'👤', office:'💼', education:'📚' };
+  const priIcon = { high:'🔴', medium:'🟡', low:'🟢' };
+
+  document.getElementById('detailTitle').textContent = `${catIcon[t.category]||''} ${t.title}`;
+  document.getElementById('detailMeta').innerHTML = `
+    <div class="task-meta">
+      <span class="badge badge-${t.category}">${t.category}</span>
+      <span class="badge badge-${t.priority}">${priIcon[t.priority]} ${t.priority}</span>
+      <span class="badge badge-${t.status}">${t.status.replace('_',' ')}</span>
+    </div>`;
+  document.getElementById('detailDesc').textContent  = t.description || '';
+  document.getElementById('detailAlarm').innerHTML   = t.alarm_date
+    ? `<div class="alarm-info" style="margin-bottom:8px;">⏰ Alarm: ${t.alarm_date} at ${t.alarm_time}</div>` : '';
+
+  // load subtasks
+  await loadSubtasks(id);
+  openModal('detailModal');
+}
+
+async function loadSubtasks(taskId) {
+  const res  = await fetch(`/api/tasks/${taskId}/subtasks`, {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  const subs = await res.json();
+
+  const total = subs.length;
+  const done  = subs.filter(s => s.status === 'completed').length;
+  const pct   = total ? Math.round((done/total)*100) : 0;
+
+  document.getElementById('subtaskProgress').innerHTML = total
+    ? `<div class="progress-wrap"><div class="progress-fill" style="width:${pct}%"></div></div>
+       <div style="font-size:0.78em;opacity:0.6;margin-bottom:8px;">${done}/${total} done (${pct}%)</div>`
+    : '';
+
+  document.getElementById('subtaskList').innerHTML = subs.map(s => `
+    <div class="subtask-item">
+      <input type="checkbox" ${s.status==='completed'?'checked':''}
+             onchange="toggleSubtask(${s.id}, this.checked)">
+      <span class="${s.status==='completed'?'subtask-done':''}">${escHtml(s.title)}</span>
+      <button class="btn btn-danger btn-sm" style="padding:3px 8px;"
+              onclick="deleteSubtask(${s.id})">✕</button>
+    </div>
+  `).join('') || '<div style="opacity:0.45;font-size:0.88em;">No sub-tasks yet</div>';
+}
+
+async function addSubtask() {
+  const input = document.getElementById('newSubtask');
+  const title = input.value.trim();
+  if (!title) return;
+  await fetch(`/api/tasks/${activeTaskId}/subtasks`, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
+    body: JSON.stringify({ title })
+  });
+  input.value = '';
+  loadSubtasks(activeTaskId);
+}
+
+async function toggleSubtask(id, checked) {
+  await fetch(`/api/subtasks/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
+    body: JSON.stringify({ status: checked ? 'completed' : 'pending' })
+  });
+  loadSubtasks(activeTaskId);
+}
+
+async function deleteSubtask(id) {
+  await fetch(`/api/subtasks/${id}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  loadSubtasks(activeTaskId);
+}
+
+// ── UPDATE STATUS ────────────────────────────
+async function updateStatus(status) {
+  const t = allTasks.find(x => x.id === activeTaskId);
+  if (!t) return;
+  await fetch(`/api/tasks/${activeTaskId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
+    body: JSON.stringify({ ...t, status })
+  });
+  closeModal('detailModal');
+  loadTasks();
+}
+
+// ── DELETE TASK ──────────────────────────────
+async function deleteTask() {
+  if (!confirm('🗑️ Delete this task?')) return;
+  await fetch(`/api/tasks/${activeTaskId}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  closeModal('detailModal');
+  loadTasks();
+}
+
+// ── AUTO LOGIN IF TOKEN EXISTS ───────────────
+if (token && currentUser) {
+  initDashboard();
+} else {
+  showPage('loginPage');
+}
+</script>
+</body>
+</html>
