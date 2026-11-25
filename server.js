@@ -1,17 +1,15 @@
-// server.js
 require('dotenv').config();
-const express    = require('express');
-const cors       = require('cors');
-const bcrypt     = require('bcryptjs');
-const jwt        = require('jsonwebtoken');
-const path       = require('path');
-const db         = require('./database');
+const express = require('express');
+const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const path = require('path');
+const db = require('./database');
 
-const app    = express();
-const PORT   = process.env.PORT || 3000;
+const app = express();
+const PORT = process.env.PORT || 3000;
 const SECRET = process.env.JWT_SECRET || 'fallback-secret-change-me';
 
-// ── MIDDLEWARE ───────────────────────────────
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -19,13 +17,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ── AUTH MIDDLEWARE ──────────────────────────
 function auth(req, res, next) {
   const header = req.headers.authorization;
-  if (!header) return res.status(401).json({ error: 'No token provided' });
+  if (!header) return res.status(401).json({ error: 'No token' });
   const token = header.split(' ')[1];
   try {
     req.user = jwt.verify(token, SECRET);
     next();
   } catch (e) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    return res.status(401).json({ error: 'Invalid token' });
   }
 }
 
@@ -33,12 +31,10 @@ function auth(req, res, next) {
 //  AUTH ROUTES
 // ════════════════════════════════════════════
 
-// REGISTER
 app.post('/api/register', async (req, res) => {
   const { username, password, color } = req.body;
   if (!username || !password)
     return res.status(400).json({ error: 'Username and password required' });
-
   try {
     const hash = await bcrypt.hash(password, 12);
     db.run(
@@ -46,7 +42,7 @@ app.post('/api/register', async (req, res) => {
       [username.trim(), hash, color || '#FF6B6B'],
       function (err) {
         if (err) return res.status(409).json({ error: 'Username already taken' });
-        res.status(201).json({ message: '✅ Account created! Please login.' });
+        res.status(201).json({ message: 'Account created!' });
       }
     );
   } catch (e) {
@@ -54,17 +50,14 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// LOGIN
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password)
     return res.status(400).json({ error: 'Username and password required' });
-
   db.get('SELECT * FROM users WHERE username = ?', [username.trim()], async (err, user) => {
     if (!user) return res.status(401).json({ error: 'User not found' });
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: 'Wrong password' });
-
     const token = jwt.sign(
       { id: user.id, username: user.username, color: user.color },
       SECRET,
@@ -74,9 +67,8 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// GET ALL USERS (for team view)
 app.get('/api/users', auth, (req, res) => {
-  db.all('SELECT id, username, color, created_at FROM users', [], (err, rows) => {
+  db.all('SELECT id, username, color FROM users', [], (err, rows) => {
     res.json(rows || []);
   });
 });
@@ -85,13 +77,9 @@ app.get('/api/users', auth, (req, res) => {
 //  TASK ROUTES
 // ════════════════════════════════════════════
 
-// GET ALL TASKS (everyone sees all)
 app.get('/api/tasks', auth, (req, res) => {
   db.all(`
-    SELECT
-      tasks.*,
-      users.username  AS owner,
-      users.color     AS owner_color
+    SELECT tasks.*, users.username AS owner, users.color AS owner_color
     FROM tasks
     JOIN users ON tasks.user_id = users.id
     ORDER BY
@@ -103,76 +91,44 @@ app.get('/api/tasks', auth, (req, res) => {
   });
 });
 
-// GET STATS
-app.get('/api/stats', auth, (req, res) => {
-  db.all(`
-    SELECT
-      COUNT(*)                                          AS total,
-      SUM(CASE WHEN status='pending'     THEN 1 ELSE 0 END) AS pending,
-      SUM(CASE WHEN status='in_progress' THEN 1 ELSE 0 END) AS in_progress,
-      SUM(CASE WHEN status='completed'   THEN 1 ELSE 0 END) AS completed,
-      SUM(CASE WHEN category='personal'  THEN 1 ELSE 0 END) AS personal,
-      SUM(CASE WHEN category='office'    THEN 1 ELSE 0 END) AS office,
-      SUM(CASE WHEN category='education' THEN 1 ELSE 0 END) AS education
-    FROM tasks
-  `, [], (err, rows) => {
-    res.json(rows[0] || {});
-  });
-});
-
-// CREATE TASK
 app.post('/api/tasks', auth, (req, res) => {
   const { title, description, category, priority, alarm_date, alarm_time } = req.body;
-  if (!title) return res.status(400).json({ error: 'Title is required' });
-
+  if (!title) return res.status(400).json({ error: 'Title required' });
   db.run(
-    `INSERT INTO tasks
-       (user_id, title, description, category, priority, alarm_date, alarm_time)
+    `INSERT INTO tasks (user_id, title, description, category, priority, alarm_date, alarm_time)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [
-      req.user.id,
-      title.trim(),
-      description || '',
-      category    || 'personal',
-      priority    || 'medium',
-      alarm_date  || null,
-      alarm_time  || null
-    ],
+    [req.user.id, title.trim(), description || '', category || 'personal',
+     priority || 'medium', alarm_date || null, alarm_time || null],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
-      res.status(201).json({ id: this.lastID, message: '✅ Task created!' });
+      res.status(201).json({ id: this.lastID, message: 'Task created!' });
     }
   );
 });
 
-// UPDATE TASK
 app.put('/api/tasks/:id', auth, (req, res) => {
   const { title, description, category, priority, status, alarm_date, alarm_time } = req.body;
   const completedAt = status === 'completed' ? new Date().toISOString() : null;
-
   db.run(
-    `UPDATE tasks SET
-       title=?, description=?, category=?, priority=?,
-       status=?, alarm_date=?, alarm_time=?, completed_at=?
+    `UPDATE tasks SET title=?, description=?, category=?, priority=?,
+     status=?, alarm_date=?, alarm_time=?, completed_at=?
      WHERE id=? AND user_id=?`,
-    [title, description, category, priority, status, alarm_date, alarm_time, completedAt, req.params.id, req.user.id],
+    [title, description, category, priority, status,
+     alarm_date, alarm_time, completedAt, req.params.id, req.user.id],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
-      if (this.changes === 0) return res.status(403).json({ error: 'Not your task or not found' });
-      res.json({ message: '✅ Task updated!' });
+      if (this.changes === 0) return res.status(403).json({ error: 'Not your task' });
+      res.json({ message: 'Updated!' });
     }
   );
 });
 
-// DELETE TASK
 app.delete('/api/tasks/:id', auth, (req, res) => {
-  db.run(
-    'DELETE FROM tasks WHERE id=? AND user_id=?',
+  db.run('DELETE FROM tasks WHERE id=? AND user_id=?',
     [req.params.id, req.user.id],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
-      if (this.changes === 0) return res.status(403).json({ error: 'Not your task or not found' });
-      res.json({ message: '✅ Task deleted!' });
+      res.json({ message: 'Deleted!' });
     }
   );
 });
@@ -181,61 +137,112 @@ app.delete('/api/tasks/:id', auth, (req, res) => {
 //  SUBTASK ROUTES
 // ════════════════════════════════════════════
 
-// GET SUBTASKS
 app.get('/api/tasks/:id/subtasks', auth, (req, res) => {
+  db.all('SELECT * FROM subtasks WHERE task_id=? ORDER BY created_at ASC',
+    [req.params.id], (err, rows) => res.json(rows || []));
+});
+
+app.post('/api/tasks/:id/subtasks', auth, (req, res) => {
+  const { title } = req.body;
+  if (!title) return res.status(400).json({ error: 'Title required' });
+  db.run('INSERT INTO subtasks (task_id, title) VALUES (?, ?)',
+    [req.params.id, title.trim()],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.status(201).json({ id: this.lastID });
+    }
+  );
+});
+
+app.put('/api/subtasks/:id', auth, (req, res) => {
+  db.run('UPDATE subtasks SET status=? WHERE id=?',
+    [req.body.status, req.params.id],
+    (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: 'Updated!' });
+    }
+  );
+});
+
+app.delete('/api/subtasks/:id', auth, (req, res) => {
+  db.run('DELETE FROM subtasks WHERE id=?', [req.params.id],
+    (err) => res.json({ message: 'Deleted!' }));
+});
+
+// ════════════════════════════════════════════
+//  RECURRING TASKS ROUTES
+// ════════════════════════════════════════════
+
+// Get all recurring templates
+app.get('/api/recurring', auth, (req, res) => {
+  db.all('SELECT * FROM recurring_tasks WHERE user_id=? ORDER BY created_at ASC',
+    [req.user.id], (err, rows) => res.json(rows || []));
+});
+
+// Create recurring template
+app.post('/api/recurring', auth, (req, res) => {
+  const { title, category, priority, times } = req.body;
+  if (!title) return res.status(400).json({ error: 'Title required' });
+  db.run(
+    `INSERT INTO recurring_tasks (user_id, title, category, priority, times)
+     VALUES (?, ?, ?, ?, ?)`,
+    [req.user.id, title.trim(), category || 'personal',
+     priority || 'medium', JSON.stringify(times || [])],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.status(201).json({ id: this.lastID, message: 'Recurring task created!' });
+    }
+  );
+});
+
+// Delete recurring template
+app.delete('/api/recurring/:id', auth, (req, res) => {
+  db.run('DELETE FROM recurring_tasks WHERE id=? AND user_id=?',
+    [req.params.id, req.user.id],
+    (err) => res.json({ message: 'Deleted!' }));
+});
+
+// Get today's recurring log
+app.get('/api/recurring/today', auth, (req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
   db.all(
-    'SELECT * FROM subtasks WHERE task_id=? ORDER BY created_at ASC',
-    [req.params.id],
+    `SELECT rl.*, rt.title, rt.category, rt.priority, rt.times
+     FROM recurring_log rl
+     JOIN recurring_tasks rt ON rl.recurring_id = rt.id
+     WHERE rl.user_id=? AND rl.log_date=?`,
+    [req.user.id, today],
     (err, rows) => res.json(rows || [])
   );
 });
 
-// ADD SUBTASK
-app.post('/api/tasks/:id/subtasks', auth, (req, res) => {
-  const { title } = req.body;
-  if (!title) return res.status(400).json({ error: 'Title required' });
-  db.run(
-    'INSERT INTO subtasks (task_id, title) VALUES (?, ?)',
-    [req.params.id, title.trim()],
-    function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.status(201).json({ id: this.lastID, message: '✅ Subtask added!' });
+// Check/uncheck recurring for today
+app.post('/api/recurring/:id/toggle', auth, (req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const { slot } = req.body; // e.g. "morning", "afternoon", "evening" or just "done"
+  db.get(
+    'SELECT * FROM recurring_log WHERE recurring_id=? AND user_id=? AND log_date=? AND slot=?',
+    [req.params.id, req.user.id, today, slot || 'done'],
+    (err, row) => {
+      if (row) {
+        // Already done → undo
+        db.run('DELETE FROM recurring_log WHERE id=?', [row.id],
+          () => res.json({ status: 'undone' }));
+      } else {
+        // Mark done
+        db.run(
+          'INSERT INTO recurring_log (recurring_id, user_id, log_date, slot) VALUES (?,?,?,?)',
+          [req.params.id, req.user.id, today, slot || 'done'],
+          () => res.json({ status: 'done' })
+        );
+      }
     }
   );
 });
 
-// UPDATE SUBTASK
-app.put('/api/subtasks/:id', auth, (req, res) => {
-  db.run(
-    'UPDATE subtasks SET status=? WHERE id=?',
-    [req.body.status, req.params.id],
-    (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: '✅ Subtask updated!' });
-    }
-  );
-});
-
-// DELETE SUBTASK
-app.delete('/api/subtasks/:id', auth, (req, res) => {
-  db.run('DELETE FROM subtasks WHERE id=?', [req.params.id], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: '✅ Subtask deleted!' });
-  });
-});
-
-// ── CATCH ALL → serve index.html ────────────
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ── START ────────────────────────────────────
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('');
-  console.log('🎯 ================================');
-  console.log(`🚀  Task Universe running!`);
-  console.log(`🌐  http://localhost:${PORT}`);
-  console.log(`📱  http://192.168.0.101:${PORT}`);
-  console.log('🎯 ================================');
-  console.log('');
+  console.log(`🚀 Task Universe running on http://localhost:${PORT}`);
 });
